@@ -9,14 +9,14 @@ public class ArrayDeque<T> {
         capacity = 8;
     }
 
-    public void reSize(){
+    private void reSize() {
         if (size() < 0.25 * capacity) {
             T[] newItems = (T[]) new Object[capacity / 2];
             int i = 0;
             while (front != rare) {
                 newItems[i] = items[front];
                 front = (front + 1) % capacity;
-                i ++;
+                i++;
             }
             front = 0;
             rare = i;
@@ -28,7 +28,7 @@ public class ArrayDeque<T> {
             while (front != rare) {
                 newItems[i] = items[front];
                 front = (front + 1) % capacity;
-                i ++;
+                i++;
             }
             front = 0;
             rare = i;
@@ -78,11 +78,12 @@ public class ArrayDeque<T> {
         if (size() == 0) {
             return null;
         } else {
+            T old = items[front];
             front = (front + 1) % capacity;
             if (size() < 0.25 * capacity && capacity >= 16) {
                 reSize();
             }
-            return items[front];
+            return old;
         }
     }
 
@@ -91,10 +92,11 @@ public class ArrayDeque<T> {
             return null;
         } else {
             rare = (rare - 1 + capacity) % capacity;
+            T old = items[rare];
             if (size() < 0.25 * capacity && capacity >= 16) {
                 reSize();
             }
-            return items[rare];
+            return old;
         }
     }
 
