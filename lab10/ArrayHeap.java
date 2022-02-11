@@ -27,24 +27,21 @@ public class ArrayHeap<T> implements ExtrinsicPQ<T> {
      * Returns the index of the node to the left of the node at i.
      */
     private static int leftIndex(int i) {
-        /* TODO: Your code here! */
-        return 0;
+        return 2 * i;
     }
 
     /**
      * Returns the index of the node to the right of the node at i.
      */
     private static int rightIndex(int i) {
-        /* TODO: Your code here! */
-        return 0;
+        return 2 * i + 1;
     }
 
     /**
      * Returns the index of the node that is the parent of the node at i.
      */
     private static int parentIndex(int i) {
-        /* TODO: Your code here! */
-        return 0;
+        return i / 2;
     }
 
     /**
@@ -107,18 +104,65 @@ public class ArrayHeap<T> implements ExtrinsicPQ<T> {
         // Throws an exception if index is invalid. DON'T CHANGE THIS LINE.
         validateSinkSwimArg(index);
 
-        /** TODO: Your code here. */
+        if (index == 1) return;
+        if (min(index, index / 2) == index) {
+            swap(index, index / 2);
+            swim(index / 2);
+        }
         return;
     }
 
     /**
      * Bubbles down the node currently at the given index.
      */
+    private void oldSink(int index) {
+        // Throws an exception if index is invalid. DON'T CHANGE THIS LINE.
+        validateSinkSwimArg(index);
+
+        boolean leftTrue = (index * 2 <= size);
+        boolean rightTrue = (index * 2 + 1 <= size);
+        if (leftTrue && min(index, index * 2) == index)
+            leftTrue = false;
+        if (rightTrue && min(index, index * 2 + 1) == index)
+            rightTrue = false;
+        if (leftTrue && rightTrue && min(index * 2, index * 2 + 1) == index * 2)
+            rightTrue = false;
+        else
+            leftTrue = false;
+        if (leftTrue) {
+            swap(index, index * 2);
+            sink(index * 2);
+        }
+        if (rightTrue) {
+            swap(index, index * 2 + 1);
+            sink(index * 2 + 1);
+        }
+        return;
+    }
+
     private void sink(int index) {
         // Throws an exception if index is invalid. DON'T CHANGE THIS LINE.
         validateSinkSwimArg(index);
 
-        /** TODO: Your code here. */
+        boolean leftTrue = false;
+        boolean rightTrue = false;
+        if ((index * 2 <= size) && min(index, index * 2) == index * 2)
+            leftTrue = true;
+        if ((index * 2 + 1 <= size) && min(index, index * 2 + 1) == index * 2 + 1)
+            rightTrue = true;
+        if (leftTrue && rightTrue)
+            if (min(index * 2, index * 2 + 1) == index * 2)
+                rightTrue = false;
+            else
+                leftTrue = false;
+        if (leftTrue) {
+            swap(index, index * 2);
+            sink(index * 2);
+        }
+        if (rightTrue) {
+            swap(index, index * 2 + 1);
+            sink(index * 2 + 1);
+        }
         return;
     }
 
@@ -133,7 +177,8 @@ public class ArrayHeap<T> implements ExtrinsicPQ<T> {
             resize(contents.length * 2);
         }
 
-        /* TODO: Your code here! */
+        contents[++size] = new Node(item, priority);
+        swim(size);
     }
 
     /**
@@ -142,8 +187,7 @@ public class ArrayHeap<T> implements ExtrinsicPQ<T> {
      */
     @Override
     public T peek() {
-        /* TODO: Your code here! */
-        return null;
+        return contents[1].myItem;
     }
 
     /**
@@ -157,8 +201,11 @@ public class ArrayHeap<T> implements ExtrinsicPQ<T> {
      */
     @Override
     public T removeMin() {
-        /* TODO: Your code here! */
-        return null;
+        T removed = peek();
+        swap(size, 1);
+        size--;
+        sink(1);
+        return removed;
     }
 
     /**
@@ -180,7 +227,16 @@ public class ArrayHeap<T> implements ExtrinsicPQ<T> {
      */
     @Override
     public void changePriority(T item, double priority) {
-        /* TODO: Your code here! */
+        double oldPri = -1;
+        int index = 0;
+        for (int i = 1; i < size; i++) {
+            if (contents[i].myItem.equals(item)) {
+                oldPri = contents[i].myPriority;
+                index = i;
+            }
+        }
+        if (priority > oldPri) sink(index);
+        else swim(index);
         return;
     }
 
