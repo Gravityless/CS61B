@@ -1,3 +1,5 @@
+import java.util.LinkedList;
+
 /**
  * Class for doing Radix sort
  *
@@ -16,8 +18,17 @@ public class RadixSort {
      * @return String[] the sorted array
      */
     public static String[] sort(String[] asciis) {
-        // TODO: Implement LSD Sort
-        return null;
+        String[] sorted = new String[asciis.length];
+        int maxLen = 0;
+        for (int i = 0; i < asciis.length; i++) {
+            sorted[i] = asciis[i];
+            maxLen = maxLen > asciis[i].length() ? maxLen : asciis[i].length();
+        }
+
+        for (int i = maxLen - 1; i >= 0 ; i--) {
+            sortHelperLSD(sorted, i);
+        }
+        return sorted;
     }
 
     /**
@@ -27,8 +38,29 @@ public class RadixSort {
      * @param index The position to sort the Strings on.
      */
     private static void sortHelperLSD(String[] asciis, int index) {
-        // Optional LSD helper method for required LSD radix sort
-        return;
+        int[] count = new int[128];
+        String[] temp = new String[asciis.length];
+
+        for (int i = 0; i < asciis.length; i++) {
+            if (asciis[i].length() <= index) count[0]++;
+            else count[asciis[i].charAt(index)]++;
+        }
+
+        for (int i = 1; i < 128; i++) {
+            count[i] += count[i - 1];
+        }
+
+        for (int i = asciis.length - 1; i >= 0; i--) {
+            if (asciis[i].length() > index) {
+                temp[count[asciis[i].charAt(index)] - 1] = asciis[i];
+                count[asciis[i].charAt(index)]--;
+            } else {
+                temp[count[0] - 1] = asciis[i];
+                count[0]--;
+            }
+        }
+
+        System.arraycopy(temp, 0, asciis, 0, asciis.length);
     }
 
     /**
@@ -44,5 +76,11 @@ public class RadixSort {
     private static void sortHelperMSD(String[] asciis, int start, int end, int index) {
         // Optional MSD helper method for optional MSD radix sort
         return;
+    }
+
+    public static void main(String[] args) {
+        String[] asciis = {"hello", "good", "rice", "dumplings", "stone", "tommorrow", "need", "to", "remove", "parenthesis", "and"};
+        String[] sorted = sort(asciis);
+        System.out.println(sorted);
     }
 }
