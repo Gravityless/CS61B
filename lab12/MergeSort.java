@@ -34,8 +34,14 @@ public class MergeSort {
     /** Returns a queue of queues that each contain one item from items. */
     private static <Item extends Comparable> Queue<Queue<Item>>
             makeSingleItemQueues(Queue<Item> items) {
-        // Your code here!
-        return null;
+        Queue<Queue<Item>> queue = new Queue<>();
+        int n = items.size();
+        for (int i = 0; i < n; i++) {
+            Queue<Item> que = new Queue();
+            que.enqueue(items.dequeue());
+            queue.enqueue(que);
+        }
+        return queue;
     }
 
     /**
@@ -53,14 +59,37 @@ public class MergeSort {
      */
     private static <Item extends Comparable> Queue<Item> mergeSortedQueues(
             Queue<Item> q1, Queue<Item> q2) {
-        // Your code here!
-        return null;
+        Queue<Item> sorted = new Queue<>();
+        int n = q1.size() + q2.size();
+        for (int i = 0; i < n; i++) {
+            sorted.enqueue(getMin(q1, q2));
+        }
+        return sorted;
     }
 
     /** Returns a Queue that contains the given items sorted from least to greatest. */
     public static <Item extends Comparable> Queue<Item> mergeSort(
             Queue<Item> items) {
-        // Your code here!
-        return items;
+        Queue<Queue<Item>> queue = makeSingleItemQueues(items);
+        while (queue.size() > 1) {
+            Queue<Item> q1 = queue.dequeue();
+            Queue<Item> q2 = queue.dequeue();
+            Queue<Item> sorted = mergeSortedQueues(q1, q2);
+            queue.enqueue(sorted);
+        }
+        return queue.dequeue();
+    }
+
+    public static void main(String[] args) {
+        Queue<String> students = new Queue<>();
+        students.enqueue("Alice");
+        students.enqueue("Vanessa");
+        students.enqueue("Ethan");
+        students.enqueue("Zebra");
+        students.enqueue("Shit");
+        students.enqueue("Carlt");
+        students.enqueue("White");
+        Queue<String> sorted = MergeSort.mergeSort(students);
+        System.out.println(sorted);
     }
 }
