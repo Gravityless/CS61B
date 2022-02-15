@@ -1,5 +1,4 @@
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,6 +11,37 @@ import java.util.regex.Pattern;
  * down to the priority you use to order your vertices.
  */
 public class Router {
+
+    private static GraphDB.Node start;
+    private static GraphDB.Node destination;
+    private static GraphDB graph;
+
+    private static class SearchNode implements Comparable<SearchNode> {
+        public Long id;
+        public SearchNode parent;
+        public double distanceFromStart;
+        public double priority;
+
+        public SearchNode(Long id, SearchNode parent, double distanceFromStart) {
+            this.id =id;
+            this.parent = parent;
+            this.distanceFromStart = distanceFromStart;
+            this.priority = distanceFromStart + distanceToDest(id);
+        }
+
+        @Override
+        public int compareTo(SearchNode o) {
+            if (this.priority < o.priority) return -1;
+            if (this.priority > o.priority) return 1;
+            return 0;
+        }
+    }
+
+    private static double distanceToDest(Long id) {
+        GraphDB.Node v = graph.nodes.get(id);
+        return GraphDB.distance(v.lon, v.lat, destination.lon, destination.lat);
+    }
+
     /**
      * Return a List of longs representing the shortest path from the node
      * closest to a start location and the node closest to the destination
@@ -25,7 +55,41 @@ public class Router {
      */
     public static List<Long> shortestPath(GraphDB g, double stlon, double stlat,
                                           double destlon, double destlat) {
-        return null; // FIXME
+        graph = g;
+        start = graph.nodes.get(g.closest(stlon, stlat));
+        destination = graph.nodes.get(g.closest(destlon, destlat));
+
+        Map<Long, Boolean> marked = new HashMap<>();
+        PriorityQueue<SearchNode> pq = new PriorityQueue<>();
+        pq.offer(new SearchNode(start.id, null, 0));
+        while (!isGoal(pq.peek())) {
+            SearchNode v = pq.poll();
+            marked.put(v.id, true);
+            for (Long w : g.adjacent(v.id)) {
+                if (!marked.containsKey(w) || marked.get(w) == false) {
+                    pq.offer(new SearchNode(w, v, v.distanceFromStart + distance(w, v.id)));
+                }
+            }
+        }
+
+        SearchNode pos = pq.peek();
+        ArrayList<Long> path = new ArrayList<>();
+        while (pos != null) {
+            path.add(pos.id);
+            pos = pos.parent;
+        }
+        Collections.reverse(path);
+        return path;
+    }
+
+    private static double distance(Long w, Long v) {
+        GraphDB.Node A = graph.nodes.get(w);
+        GraphDB.Node B = graph.nodes.get(v);
+        return GraphDB.distance(A.lon, A.lat, B.lon, B.lat);
+    }
+
+    private static boolean isGoal(SearchNode v) {
+        return distanceToDest(v.id) == 0;
     }
 
     /**
@@ -65,7 +129,7 @@ public class Router {
 
         /** Default name for an unknown way. */
         public static final String UNKNOWN_ROAD = "unknown road";
-        
+
         /** Static initializer. */
         static {
             DIRECTIONS[START] = "Start";
@@ -149,8 +213,8 @@ public class Router {
         public boolean equals(Object o) {
             if (o instanceof NavigationDirection) {
                 return direction == ((NavigationDirection) o).direction
-                    && way.equals(((NavigationDirection) o).way)
-                    && distance == ((NavigationDirection) o).distance;
+                        && way.equals(((NavigationDirection) o).way)
+                        && distance == ((NavigationDirection) o).distance;
             }
             return false;
         }

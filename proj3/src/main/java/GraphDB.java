@@ -6,7 +6,7 @@ import java.io.IOException;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
-import java.util.ArrayList;
+import java.util.*;
 
 /**
  * Graph for storing all of the intersection (vertex) and road (edge) information.
@@ -18,6 +18,20 @@ import java.util.ArrayList;
  * @author Alan Yao, Josh Hug
  */
 public class GraphDB {
+
+    //每个序号对应的点，在调用了clean方法后，就剩下图中所有相连的点，该Map在搜索最短路径时使用
+    public Map<Long, Node> nodes = new HashMap<>();
+    //每个点相邻的点
+    private Map<Long, ArrayList<Long>> adjNode = new HashMap<>();
+    //一个名字可能对应多个点
+    private Map<String, ArrayList<Long>> names = new HashMap<>();
+
+    private Map<Long, ArrayList<Edge>> adjEdge = new HashMap<>();
+    //地图中所有的点，不管是否相连。在搜索location时使用
+    public Map<Long, Node> locations = new HashMap<>();
+    //Trie，字符串匹配时使用
+    private Trie<Long> trie = new Trie<>();
+
     /** Your instance variables for storing the graph. You should consider
      * creating helper classes, e.g. Node, Edge, etc. */
 
@@ -57,7 +71,22 @@ public class GraphDB {
      *  we can reasonably assume this since typically roads are connected.
      */
     private void clean() {
-        // TODO: Your code here.
+        /*
+        Iterator<Map.Entry<Long, ArrayList<Long>>> it = adjNode.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Long, ArrayList<Long>> entry = it.next();
+            if (entry.getValue().isEmpty()) {
+                //只清理nodes和adjNode
+                nodes.remove(entry.getKey());
+                it.remove();
+            }
+        }
+        */
+        for (Map.Entry<Long, ArrayList<Long>> m : adjNode.entrySet()) {
+            if (m.getValue().isEmpty()) {
+                nodes.remove(m.getKey());
+            }
+        }
     }
 
     /**
@@ -65,8 +94,7 @@ public class GraphDB {
      * @return An iterable of id's of all vertices in the graph.
      */
     Iterable<Long> vertices() {
-        //YOUR CODE HERE, this currently returns only an empty list.
-        return new ArrayList<Long>();
+        return nodes.keySet();
     }
 
     /**
@@ -75,7 +103,12 @@ public class GraphDB {
      * @return An iterable of the ids of the neighbors of v.
      */
     Iterable<Long> adjacent(long v) {
-        return null;
+        validateVertex(nodes.get(v));
+        return adjNode.get(v);
+    }
+
+    Iterator<Edge> neighbors(Long v) {
+        return (Iterator<Edge>) adjEdge.get(v);
     }
 
     /**
@@ -136,7 +169,16 @@ public class GraphDB {
      * @return The id of the node in the graph closest to the target.
      */
     long closest(double lon, double lat) {
-        return 0;
+        double closest = Double.MAX_VALUE;
+        Long ret = 0l;
+        for (Long id : vertices()) {
+            double distance = distance(lon(id), lat(id), lon, lat);
+            if (distance < closest) {
+                closest = distance;
+                ret = id;
+            }
+        }
+        return ret;
     }
 
     /**
@@ -145,7 +187,7 @@ public class GraphDB {
      * @return The longitude of the vertex.
      */
     double lon(long v) {
-        return 0;
+        return nodes.get(v).lon;
     }
 
     /**
@@ -154,6 +196,118 @@ public class GraphDB {
      * @return The latitude of the vertex.
      */
     double lat(long v) {
-        return 0;
+        return nodes.get(v).lat;
+    }
+
+    String getName(Long v) {
+        if (nodes.get(v).name == null) {
+            throw new IllegalArgumentException();
+        }
+        return nodes.get(v).name;
+    }
+
+    void addName(Long id, double lon, double lat, String locationName) {
+        //将名字统一转换成小写
+        String cleanedName = cleanString(locationName);
+        if (!names.containsKey(cleanedName)) {
+            names.put(cleanedName, new ArrayList<>());
+        }
+        //names中存放的是cleanString和id列表，方便我们根据cleanString获取对应的所有点的id
+        names.get(cleanedName).add(id);
+        //Node对象中的name属性存放的是真实的locationName，通过names获取id后，再用nodes获取id的真正名字
+        nodes.get(id).name = locationName;
+        locations.get(id).name = locationName;
+        //trie里存放的是cleanString，方便检索
+        trie.put(cleanedName, id);
+    }
+
+    //获取对应名字的点
+    ArrayList<Long> getLocations(String name) {
+        return names.get(cleanString(name));
+    }
+
+    void addNode(Long id, double lon, double lat) {
+        Node n = new Node(id, lon, lat);
+        nodes.put(id, n);
+        adjNode.put(id, new ArrayList<>());
+        adjEdge.put(id, new ArrayList<>());
+        locations.put(id, n);
+    }
+
+    void addWay(ArrayList<Long> ways, String wayName) {
+        for (int i = 1; i < ways.size(); i++) {
+            addEdge(ways.get(i - 1), ways.get(i), wayName);
+        }
+    }
+
+    void addEdge(Long v, Long w, String wayName) {
+        validateVertex(nodes.get(v));
+        validateVertex(nodes.get(w));
+        adjNode.get(v).add(w);
+        adjNode.get(w).add(v);
+        adjEdge.get(v).add(new Edge(v, w, distance(v, w), wayName));
+        adjEdge.get(w).add(new Edge(v, w, distance(v, w), wayName));
+    }
+
+    void validateVertex(Node v) {
+
+        if (!nodes.containsKey(v.id)) {
+            throw new IllegalArgumentException("Vertex " + v + "is not in the graph");
+        }
+    }
+
+    List<String> keysWithPrefixOf(String prefix) {
+        List<String> result = new ArrayList<>();
+        //用cleanString从trie中获得的也是以其为前缀的cleanString，我们还需要找到cleanString对应的真实名字
+        for (String key : trie.keysWithPrefix(cleanString(prefix))) {
+            for (Long id : names.get(key)) {
+                result.add(locations.get(id).name);
+            }
+        }
+        System.out.println(result);
+        return result;
+    }
+
+    public static class Edge {
+        private Long v;
+        private Long w;
+        private double weight;
+        private String name;
+
+        public Edge(Long v, Long w, double weight, String name) {
+            this.v = v;
+            this.w = w;
+            this.weight = weight;
+            this.name = name;
+        }
+
+        public Long either() {
+            return v;
+        }
+
+        public Long other(Long vertex) {
+            return vertex.equals(v) ? w : v;
+        }
+
+        public double getWeight() {
+            return weight;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    public static class Node {
+        public final Long id;
+        public final double lon;
+        public final double lat;
+        public String name = null;
+
+        public Node(Long id, double lon, double lat) {
+            this.id = id;
+            this.lon = lon;
+            this.lat = lat;
+        }
     }
 }
